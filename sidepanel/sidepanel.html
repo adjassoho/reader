@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gemini Reader</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- En-tête -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+            <path d="M12 7v5" stroke="#818cf8" stroke-width="2.5"></path>
+          </svg>
+        </div>
+        <div class="brand-info">
+          <h1>Gemini Reader</h1>
+          <span class="status-indicator" id="status-badge">Prêt</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-refresh" class="icon-btn" title="Ré-extraire le texte de la page active" aria-label="Actualiser">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Bannière clé API manquante -->
+    <div id="api-key-banner" class="alert-banner hidden">
+      <span>💡 Clé API Gemini non configurée.</span>
+      <button id="btn-open-settings-banner" class="btn-link">Configurer</button>
+    </div>
+
+    <!-- Notification Toast dynamique -->
+    <div id="toast-notification" class="toast-notification hidden"></div>
+
+    <!-- Navigation par onglets -->
+    <nav class="tabs-nav" role="tablist">
+      <button class="tab-btn active" data-tab="tab-audio" role="tab" aria-selected="true">
+        <span class="tab-icon">🎧</span>
+        <span class="tab-label">Audio</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-reader" role="tab" aria-selected="false">
+        <span class="tab-icon">📖</span>
+        <span class="tab-label">Lecture</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-summary" role="tab" aria-selected="false">
+        <span class="tab-icon">⚡</span>
+        <span class="tab-label">Résumé IA</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-chat" role="tab" aria-selected="false">
+        <span class="tab-icon">💬</span>
+        <span class="tab-label">Assistant</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-settings" role="tab" aria-selected="false">
+        <span class="tab-icon">⚙️</span>
+        <span class="tab-label">Réglages</span>
+      </button>
+    </nav>
+
+    <!-- Conteneur principal -->
+    <main class="tabs-content">
+      <!-- 1. ONGLET AUDIO -->
+      <section id="tab-audio" class="tab-pane active" role="tabpanel">
+        <div class="article-meta-card">
+          <h2 id="article-title" class="article-title">Chargement de la page...</h2>
+          <div class="article-stats">
+            <span id="article-word-count">0 mots</span>
+            <span class="dot-separator">•</span>
+            <span id="article-reading-time">~0 min de lecture</span>
+          </div>
+        </div>
+
+        <!-- Carte de lecture active -->
+        <div class="player-card">
+          <div class="now-playing-label">Phrase en cours</div>
+          <div class="current-sentence-box" id="current-sentence-display">
+            Cliquez sur Lecture pour démarrer la lecture vocale.
+          </div>
+
+          <!-- Barre de progression -->
+          <div class="progress-section">
+            <div class="progress-bar-container" id="progress-container">
+              <div class="progress-bar-fill" id="progress-fill" style="width: 0%;"></div>
+            </div>
+            <div class="progress-info">
+              <span id="progress-text">0 / 0</span>
+              <span id="progress-percentage">0%</span>
+            </div>
+          </div>
+
+          <!-- Contrôles audio principaux -->
+          <div class="player-controls">
+            <button id="btn-prev" class="ctrl-btn" title="Phrase précédente" aria-label="Précédent">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2"></line>
+              </svg>
+            </button>
+
+            <button id="btn-play-pause" class="ctrl-btn play-btn" title="Lire / Mettre en pause" aria-label="Lecture">
+              <svg id="icon-play" width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <svg id="icon-pause" class="hidden" width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+              </svg>
+            </button>
+
+            <button id="btn-stop" class="ctrl-btn" title="Arrêter la lecture" aria-label="Stop">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12"></rect>
+              </svg>
+            </button>
+
+            <button id="btn-next" class="ctrl-btn" title="Phrase suivante" aria-label="Suivant">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Paramètres rapides du lecteur -->
+          <div class="player-quick-settings">
+            <div class="speed-selector">
+              <span class="label-tiny">Vitesse :</span>
+              <div class="speed-pills">
+                <button class="pill-btn" data-speed="0.75">0.75x</button>
+                <button class="pill-btn active" data-speed="1.0">1x</button>
+                <button class="pill-btn" data-speed="1.25">1.25x</button>
+                <button class="pill-btn" data-speed="1.5">1.5x</button>
+              </div>
+            </div>
+
+            <div class="engine-badge-container">
+              <span id="current-engine-tag" class="engine-tag" title="Moteur vocal utilisé">Navigateur</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. ONGLET LECTURE ZEN -->
+      <section id="tab-reader" class="tab-pane" role="tabpanel">
+        <div class="reader-toolbar">
+          <span class="help-text">Touchez une phrase pour écouter à partir de celle-ci.</span>
+          <div class="font-controls">
+            <button id="btn-font-smaller" class="pill-btn" title="Diminuer police">A-</button>
+            <button id="btn-font-larger" class="pill-btn" title="Agrandir police">A+</button>
+          </div>
+        </div>
+        <div class="reader-container" id="reader-content-body">
+          <p class="placeholder-text">Extrayez une page pour commencer la lecture.</p>
+        </div>
+      </section>
+
+      <!-- 3. ONGLET RÉSUMÉ IA -->
+      <section id="tab-summary" class="tab-pane" role="tabpanel">
+        <div class="ai-actions-bar">
+          <button id="btn-generate-summary" class="btn btn-primary">
+            <span>✨</span> Résumer la page
+          </button>
+          <button id="btn-simplify-text" class="btn btn-secondary">
+            <span>🎓</span> Vulgariser / Expliquer
+          </button>
+        </div>
+
+        <div id="summary-result-container" class="summary-card hidden">
+          <div class="summary-header">
+            <span class="summary-badge" id="summary-type-badge">Points Clés</span>
+            <button id="btn-listen-summary" class="btn-icon-text" title="Écouter ce résumé">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span>Écouter le résumé</span>
+            </button>
+          </div>
+          <div class="summary-body" id="summary-content-text"></div>
+        </div>
+
+        <div id="summary-loader" class="loader-box hidden">
+          <div class="spinner"></div>
+          <p>Gemini analyse et synthétise le texte...</p>
+        </div>
+      </section>
+
+      <!-- 4. ONGLET CHAT / QUESTIONS -->
+      <section id="tab-chat" class="tab-pane" role="tabpanel">
+        <div class="chat-container">
+          <div class="chat-header">
+            <span class="chat-title">💬 Assistant IA de lecture</span>
+            <button id="btn-clear-chat" class="btn-clear-chat" title="Effacer l'historique de discussion">
+              🗑️ Effacer
+            </button>
+          </div>
+
+          <div class="chat-messages" id="chat-messages">
+            <div class="chat-bubble assistant">
+              Bonjour ! Posez-moi n'importe quelle question sur le texte de cette page, demandez-moi d'expliquer une phrase complexe ou un terme, je vous répondrai avec plaisir.
+            </div>
+          </div>
+
+          <div class="prompt-chips">
+            <button class="chip" data-prompt="Quelles sont les 3 conclusions majeures de ce texte ?">3 conclusions majeures</button>
+            <button class="chip" data-prompt="Explique ce passage avec des mots simples et un exemple.">Explique simplement</button>
+            <button class="chip" data-prompt="Quel est le problème principal abordé ?">Problème principal</button>
+          </div>
+
+          <form id="chat-form" class="chat-input-bar">
+            <input type="text" id="chat-input" placeholder="Posez une question ou demandez d'expliquer une phrase..." autocomplete="off">
+            <button type="submit" id="btn-chat-send" class="btn-send" aria-label="Envoyer">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- 5. ONGLET PARAMÈTRES -->
+      <section id="tab-settings" class="tab-pane" role="tabpanel">
+        <div class="settings-group">
+          <h3>Clé API Google Gemini</h3>
+          <p class="setting-desc">Nécessaire pour le résumé intelligent, l'explication, le chat et les voix Gemini TTS.</p>
+          <div class="api-key-input-container">
+            <input type="password" id="input-api-key" placeholder="AIzaSy..." autocomplete="off">
+            <button id="btn-toggle-key-visibility" class="icon-btn-inline" title="Afficher/masquer">👁️</button>
+          </div>
+          <div class="key-actions">
+            <button id="btn-save-key" class="btn btn-primary">Enregistrer la clé</button>
+            <button id="btn-test-key" class="btn btn-secondary">Tester la clé</button>
+          </div>
+          <span id="key-test-status" class="status-msg"></span>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" class="help-link">
+            Obtenir une clé API gratuite sur Google AI Studio ↗
+          </a>
+        </div>
+
+        <div class="settings-group">
+          <h3>Modèle IA (Résumé & Chat)</h3>
+          <p class="setting-desc">Sélectionnez le modèle Gemini pour le texte. Le mode Automatique bascule instantanément sur un modèle alternatif en cas de forte demande temporaire.</p>
+          <select id="select-gemini-model" class="custom-select">
+            <option value="auto" selected>⚡ Automatique (gemini-3.8-flash + secours 3.5-flash-lite) - Recommandé</option>
+            <option value="gemini-3.5-flash-lite">🚀 Gemini 3.5 Flash-Lite (Ultra-rapide & toujours disponible)</option>
+            <option value="gemini-3.8-flash">🧠 Gemini 3.8 Flash (Raisonnement maximal)</option>
+            <option value="gemini-3.1-flash-lite">💡 Gemini 3.1 Flash-Lite (Léger & stable)</option>
+          </select>
+        </div>
+
+        <div class="settings-group">
+          <h3>Moteur Vocal (Lecture Audio)</h3>
+          <div class="radio-option">
+            <label>
+              <input type="radio" name="speechEngine" value="native" checked>
+              <strong>Synthèse Vocale du Navigateur (Recommandée - Illimitée & Gratuite)</strong>
+              <span class="subtext">Lit tout le texte sans interruption, sans quota, avec les voix françaises de votre système.</span>
+            </label>
+          </div>
+          <div class="radio-option">
+            <label>
+              <input type="radio" name="speechEngine" value="gemini">
+              <strong>Voix IA Gemini (gemini-3.1-flash-tts-preview)</strong>
+              <span class="subtext">Voix réalistes haute fidélité (limité à 3 requêtes/min sur l'API gratuite).</span>
+            </label>
+          </div>
+
+          <div class="quota-info-notice">
+            <span class="quota-icon">ℹ️</span>
+            <div>
+              <strong>Comprendre les quotas de voix Gemini :</strong>
+              <p>Sur l'API gratuite Google AI Studio, la voix IA Gemini est limitée à <strong>3 requêtes/minute</strong> (l'abonnement grand public Gemini Advanced / Pro de Google One ne s'applique pas aux quotas de l'API développeur). Pour écouter de longs textes sans interruption, privilégiez la <strong>Synthèse Vocale du Navigateur</strong>.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group" id="group-native-voice">
+          <h3>Choix de la voix du Navigateur</h3>
+          <p class="setting-desc">Sélectionnez la voix française locale préférée de votre système ou de Google.</p>
+          <select id="select-native-voice" class="custom-select">
+            <option value="">Chargement des voix disponibles...</option>
+          </select>
+          <button id="btn-test-native-voice" class="btn btn-secondary btn-sm" style="margin-top: 8px;">
+            🔊 Tester cette voix locale
+          </button>
+        </div>
+
+        <div class="settings-group" id="group-gemini-voice">
+          <h3>Choix de la voix Gemini</h3>
+          <select id="select-gemini-voice" class="custom-select">
+            <option value="Kore" selected>Kore (Posée et claire - Recommandée)</option>
+            <option value="Puck">Puck (Dynamique et engageante)</option>
+            <option value="Zephyr">Zephyr (Lumineuse et chaleureuse)</option>
+            <option value="Fenrir">Fenrir (Énergique et vive)</option>
+            <option value="Aoede">Aoede (Fluide et posée)</option>
+            <option value="Charon">Charon (Informative et journalistique)</option>
+            <option value="Achernar">Achernar (Douce et feutrée)</option>
+            <option value="Sulafat">Sulafat (Chaleureuse et enveloppante)</option>
+          </select>
+          <button id="btn-test-voice" class="btn btn-secondary btn-sm" style="margin-top: 8px;">
+            🔊 Tester cette voix Gemini
+          </button>
+        </div>
+
+        <div class="settings-group">
+          <h3>Extraction Automatique</h3>
+          <label class="toggle-container">
+            <input type="checkbox" id="check-auto-extract" checked>
+            <span class="toggle-label">Extraire automatiquement la page lors du changement d'onglet</span>
+          </label>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>
